@@ -17,7 +17,9 @@ import numpy as np
 import cv2
 
 
-def load_radar(example_path: AnyStr) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, float]:
+def load_radar(
+    example_path: AnyStr,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, float]:
     """Decode a single Oxford Radar RobotCar Dataset radar example
     Args:
         example_path (AnyStr): Oxford Radar RobotCar Dataset Example png
@@ -35,15 +37,30 @@ def load_radar(example_path: AnyStr) -> Tuple[np.ndarray, np.ndarray, np.ndarray
 
     raw_example_data = cv2.imread(example_path, cv2.IMREAD_GRAYSCALE)
     timestamps = raw_example_data[:, :8].copy().view(np.int64)
-    azimuths = (raw_example_data[:, 8:10].copy().view(np.uint16) / float(encoder_size) * 2 * np.pi).astype(np.float32)
+    azimuths = (
+        raw_example_data[:, 8:10].copy().view(np.uint16)
+        / float(encoder_size)
+        * 2
+        * np.pi
+    ).astype(np.float32)
     valid = raw_example_data[:, 10:11] == 255
-    fft_data = raw_example_data[:, 11:].astype(np.float32)[:, :, np.newaxis] / 255.
+    fft_data = raw_example_data[:, 11:].astype(np.float32)[:, :, np.newaxis] / 255.0
+    # print("timestamps shape: ", timestamps.shape)
+    # print("azimuths shape: ", azimuths.shape)
+    # print("valid shape: ", valid.shape)
+    # print("fft_data shape: ", fft_data.shape)
 
     return timestamps, azimuths, valid, fft_data, radar_resolution
 
 
-def radar_polar_to_cartesian(azimuths: np.ndarray, fft_data: np.ndarray, radar_resolution: float,
-                             cart_resolution: float, cart_pixel_width: int, interpolate_crossover=True) -> np.ndarray:
+def radar_polar_to_cartesian(
+    azimuths: np.ndarray,
+    fft_data: np.ndarray,
+    radar_resolution: float,
+    cart_resolution: float,
+    cart_pixel_width: int,
+    interpolate_crossover=True,
+) -> np.ndarray:
     """Convert a polar radar scan to cartesian.
     Args:
         azimuths (np.ndarray): Rotation for each polar radar azimuth (radians)
@@ -119,11 +136,13 @@ def radar_polar_to_cartesian(azimuths: np.ndarray, fft_data: np.ndarray, radar_r
         cart_min_range = (cart_pixel_width / 2 - 0.5) * cart_resolution
     else:
         cart_min_range = cart_pixel_width // 2 * cart_resolution
-    coords = np.linspace(-cart_min_range, cart_min_range, cart_pixel_width, dtype=np.float32)
+    coords = np.linspace(
+        -cart_min_range, cart_min_range, cart_pixel_width, dtype=np.float32
+    )
     Y, X = np.meshgrid(coords, -coords)
     sample_range = np.sqrt(Y * Y + X * X)
     sample_angle = np.arctan2(Y, X)
-    sample_angle += (sample_angle < 0).astype(np.float32) * 2. * np.pi
+    sample_angle += (sample_angle < 0).astype(np.float32) * 2.0 * np.pi
 
     # Interpolate Radar Data Coordinates
     azimuth_step = azimuths[1] - azimuths[0]
@@ -140,5 +159,7 @@ def radar_polar_to_cartesian(azimuths: np.ndarray, fft_data: np.ndarray, radar_r
         sample_v = sample_v + 1
 
     polar_to_cart_warp = np.stack((sample_u, sample_v), -1)
-    cart_img = np.expand_dims(cv2.remap(fft_data, polar_to_cart_warp, None, cv2.INTER_LINEAR), -1)
+    cart_img = np.expand_dims(
+        cv2.remap(fft_data, polar_to_cart_warp, None, cv2.INTER_LINEAR), -1
+    )
     return cart_img
