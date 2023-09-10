@@ -60,6 +60,13 @@ for radar_timestamp in radar_timestamps:
         interpolate_crossover,
     )
 
+    if len(cart_img.shape) == 2:
+        print("Grayscale image")
+    elif len(cart_img.shape) == 3:
+        print("BGR image")
+    else:
+        print("Unknown image format")
+    exit()
     # Combine polar and cartesian for visualisation
     # The raw polar data is resized to the height of the cartesian representation
     downsample_rate = 4
